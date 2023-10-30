@@ -1,5 +1,16 @@
+import { Finder } from "../finder/index.js";
 import { bot, GIF } from "../index.js";
+import { userModel } from "../model/user.js";
 
+export const newUser = async (id, first_name) => {
+  const newUser = new userModel({
+    userId: id,
+    name: first_name,
+    isSubscribed: false,
+    companies: [],
+  });
+  await newUser.save();
+};
 export const Start = (id, name) => {
   bot.sendMessage(
     id,
@@ -13,12 +24,141 @@ export const Help = (id) => {
     "Confused? Don't worry, I'm here to help. \n\n Type /find if your want a quick job search \n\n Type /subscribe to get daily updates on job openings \n\n Type /unsubscribe to stop receiving daily updates \n\n If you are a subscriber, then \n\n Type /add if you want to add more company to keep an eye on them \n\n Type /remove if you want to remove a company from your list \n\n Type /companies to see the list of companies you are tracking"
   );
 };
-export const Find = (id) => {};
-export const Subscribe = (id) => {};
-export const Unsubscribe = (id) => {};
-export const Add = (id) => {};
-export const Remove = (id) => {};
-export const Companies = (id) => {};
+export const Find = async (id) => {
+  const user = await userModel.findOne({ userId: id });
+  if (user && user.isSubscribed) {
+    await bot.sendMessage(id, "🔭");
+    await bot.sendMessage(id, "Going to search for jobs in your list...");
+    await Finder(id);
+    return;
+  } else {
+    const ask = await bot.sendMessage(
+      id,
+      "Looks like you are not a subscriber. \n\nEnter the name of the company you want to search for. \n\nFor example Cred",
+      {
+        reply_markup: {
+          force_reply: true,
+        },
+      }
+    );
+    bot.onReplyToMessage(id, ask.message_id, async (msg) => {
+      const company = msg.text.charAt(0).toUpperCase() + msg.text.slice(1);
+      await bot.sendMessage(msg.chat.id, "🔭");
+      await bot.sendMessage(msg.chat.id, `Searching in ${company}`);
+      Finder(msg.chat.id, msg.text);
+    });
+  }
+  // Finder(id);
+};
+export const Subscribe = async (id) => {
+  // bot.sendMessage(id, "Wait lemme do some checks....");
+  bot.sendChatAction(id, "typing");
+  const user = await userModel.findOne({ userId: id });
+  if (user && user.isSubscribed)
+    await bot.sendMessage(
+      id,
+      "<b>Heyyyy! you are already a subscriber.</b> 🙄",
+      { parse_mode: "HTML" }
+    );
+  if (!user.isSubscribed) {
+    await userModel.findOneAndUpdate({ userId: id }, { isSubscribed: true });
+    await bot.sendMessage(id, "<b>Hurray! You are subscribed now.</b>", {
+      parse_mode: "HTML",
+    });
+    await bot.sendMessage(id, "🎊");
+  }
+  bot.sendMessage(
+    id,
+    "You will receive daily updates on job openings for the companies which are included in your subscription list. \n\nType company name after /add or /remove to edit your subscription list. \n<i>For example /add Apple.</i>",
+    { parse_mode: "HTML" }
+  );
+};
+export const Unsubscribe = async (id) => {
+  const user = await userModel.findOne({ userId: id });
+  if (user && !user.isSubscribed) {
+    await bot.sendMessage(id, "Heyyyy! you are not a subscriber. 🙄");
+    bot.sendMessage(id, "Type /subscribe to subscribe");
+  } else {
+    await userModel.findOneAndUpdate({ userId: id }, { isSubscribed: false });
+    await bot.sendMessage(id, "You are unsubscribed now.");
+    await bot.sendMessage(id, "😒");
+  }
+};
+export const Add = async (id, company) => {
+  //
+  const user = await userModel.findOne({ userId: id });
+  try {
+    if (!user.isSubscribed) {
+      await bot.sendMessage(
+        id,
+        "This service is only for subscriber. \n\nType /subscribe to subscribe"
+      );
+      return;
+    }
+    if (user && user.companies.includes(company)) {
+      await bot.sendMessage(
+        id,
+        "Heyyyy! you are already tracking this company. 🙄 \n\nTo see your list enter /companies."
+      );
+      return;
+    } else {
+      await userModel.updateOne(
+        { userId: id },
+        { $push: { companies: company } }
+      );
+      company = company.slice(0, 1).toUpperCase() + company.slice(1);
+      bot.sendMessage(id, `${company} is added to your list`);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+export const Remove = async (id, company) => {
+  const user = await userModel.findOne({ userId: id });
+  if (!user.isSubscribed) {
+    await bot.sendMessage(
+      id,
+      "This service is only for subscriber. \n\nType /subscribe to subscribe"
+    );
+    return;
+  }
+  if (user && user.companies.includes(company)) {
+    await userModel.updateOne(
+      { userId: id },
+      { $pull: { companies: company } }
+    );
+    company = company.slice(0, 1).toUpperCase() + company.slice(1);
+    await bot.sendMessage(id, `${company} is removed from your list`);
+    return;
+  } else {
+    await bot.sendMessage(
+      id,
+      "Heyyyy! you are not tracking this company. 🙄 \n\nTo see your list enter /companies."
+    );
+  }
+};
+export const Companies = async (id) => {
+  const user = await userModel.findOne({ userId: id });
+  if (!user.isSubscribed) {
+    await bot.sendMessage(
+      id,
+      "This service is only for subscriber. \n\nType /subscribe to subscribe"
+    );
+    return;
+  }
+  if (user && user.companies.length > 0) {
+    let res = "";
+    user.companies.forEach((company) => {
+      company = company.slice(0, 1).toUpperCase() + company.slice(1);
+      res += `${company} \n`;
+    });
+    await bot.sendMessage(id, `<b>Your Subscription list.</b> \n${res}`, {
+      parse_mode: "HTML",
+    });
+  } else {
+    await bot.sendMessage(id, "You are not tracking any company");
+  }
+};
 
 export const Defaulter = (id, text, name) => {
   const sticker = [
@@ -35,12 +175,7 @@ export const Defaulter = (id, text, name) => {
   ];
   const idx = Math.round(Math.random() * 4);
 
-  if (text.startsWith("/")) {
-    bot.sendMessage(
-      id,
-      "Sorry, I don't understand that command. Type /help to see the list of commands"
-    );
-  } else if (
+  if (
     text.toLowerCase().includes("hi") ||
     text.toLowerCase().includes("hello") ||
     text.toLowerCase().includes("hey")
@@ -59,7 +194,6 @@ export const Defaulter = (id, text, name) => {
   } else {
     bot.sendChatAction(id, "choose_sticker").then(() => {
       bot.sendSticker(id, sticker[idx]);
-
       bot.sendMessage(id, res[idx]);
     });
   }

@@ -5,6 +5,6 @@ export const connectDB = () => {
     .connect(process.env.MONGO_URI, {
       dbName: "JobFinder",
     })
-    .then((c) => console.log(`DB is connected to ${c.connection.host}`))
+    .then((c) => console.log(`DB is connected`))
     .catch((e) => console.log(e));
 };
