@@ -2,6 +2,7 @@ import { Finder } from "../finder/index.js";
 import { bot, GIF } from "../index.js";
 import { userModel } from "../model/user.js";
 
+const servies = ["cred", "upstox", "zerodha"];
 export const newUser = async (id, first_name) => {
   const newUser = new userModel({
     userId: id,
@@ -16,19 +17,27 @@ export const Start = (id, name) => {
     id,
     `Hello ${name}, I can scan a career page and tell you if they have any suitable opening. \n\nTry /help`
   );
-  bot.sendAnimation(id, GIF);
+  bot.sendMessage(
+    id,
+    "Since I'am at beta stage, I can only search for jobs in Cred, Upstox and Zerodha."
+  );
+  // bot.sendAnimation(id, GIF);
+  bot.sendMessage(id, "🤖");
 };
 export const Help = (id) => {
   bot.sendMessage(
     id,
-    "Confused? Don't worry, I'm here to help. \n\n Type /find if your want a quick job search \n\n Type /subscribe to get daily updates on job openings \n\n Type /unsubscribe to stop receiving daily updates \n\n If you are a subscriber, then \n\n Type /add if you want to add more company to keep an eye on them \n\n Type /remove if you want to remove a company from your list \n\n Type /companies to see the list of companies you are tracking"
+    "Confused? Don't worry, I'm here to help. \n\n Type /find if your want a quick job search \n\n Type /subscribe to get daily updates on job openings \n\n Type /unsubscribe to stop receiving daily updates \n\n If you are a subscriber, then \n\n Type /add if you want to add more company to keep an eye on them \n\n Type /remove if you want to remove a company from your list \n\n Type /companies to see the list of companies you are tracking \n\n Type /end to delete your data from our database"
   );
 };
 export const Find = async (id) => {
   const user = await userModel.findOne({ userId: id });
   if (user && user.isSubscribed) {
     await bot.sendMessage(id, "🔭");
-    await bot.sendMessage(id, "Going to search for jobs in your list...");
+    await bot.sendMessage(
+      id,
+      "Going to search for jobs please hold on it might take a while! up to 2 min"
+    );
     await Finder(id);
     return;
   } else {
@@ -42,10 +51,17 @@ export const Find = async (id) => {
       }
     );
     bot.onReplyToMessage(id, ask.message_id, async (msg) => {
-      const company = msg.text.charAt(0).toUpperCase() + msg.text.slice(1);
-      await bot.sendMessage(msg.chat.id, "🔭");
-      await bot.sendMessage(msg.chat.id, `Searching in ${company}`);
-      Finder(msg.chat.id, msg.text);
+      // const company = msg.text.charAt(0).toUpperCase() + msg.text.slice(1);
+      bot.sendMessage(msg.chat.id, "🔭");
+      // await bot.sendMessage(msg.chat.id, `Searching in ${company}`);
+      if (!servies.includes(msg.text.toLowerCase())) {
+        bot.sendMessage(
+          msg.chat.id,
+          "Sorry I can't search for this company \n\nTry Cred, Uptox or Zerodha"
+        );
+        return;
+      }
+      Finder(msg.chat.id, msg.text.toLowerCase());
     });
   }
   // Finder(id);
@@ -159,7 +175,6 @@ export const Companies = async (id) => {
     await bot.sendMessage(id, "You are not tracking any company");
   }
 };
-
 export const Defaulter = (id, text, name) => {
   const sticker = [
     "https://tlgrm.eu/_/stickers/4e9/f82/4e9f8261-7c25-3624-b040-323197eaf136/192/3.webp",

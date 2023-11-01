@@ -1,8 +1,13 @@
 // import { Resend } from "resend";
 import { bot } from "../index.js";
-import { jobs, keywords, ourCompanies } from "../utils/util.js";
+// import {keywords, ourCompanies } from "../utils/util.js";
 import { userModel } from "../model/user.js";
-import { credTracker, upstoxTracker, zerodhaTracker } from "./company.js";
+import {
+  credTracker,
+  // result,
+  upstoxTracker,
+  zerodhaTracker,
+} from "./company.js";
 
 export const Finder = async (id, company) => {
   try {
@@ -10,45 +15,33 @@ export const Finder = async (id, company) => {
     if (user && user.isSubscribed) {
       //       jobs = [];
       user.companies.forEach(async (company) => {
-        if (company === "zerodha") {
-          zerodhaTracker(id);
-          await bot.sendMessage(id, "Searching for Zerodha jobs");
-        }
-        if (company === "upstox") {
-          upstoxTracker(id);
-          await bot.sendMessage(id, "Searching for Upstox jobs");
-        }
-        if (company === "cred") {
-          credTracker(id);
-          await bot.sendMessage(id, "Searching for Cred jobs");
-        }
+        if (company === "zerodha")
+          await bot
+            .sendMessage(id, "Searching in Zerodha")
+            .then(() => zerodhaTracker(id));
+        if (company === "upstox")
+          await bot
+            .sendMessage(id, "Searching in Upstox")
+            .then(() => upstoxTracker(id));
+        if (company === "cred")
+          await bot
+            .sendMessage(id, "Searching in Cred")
+            .then(() => credTracker(id));
       });
-      if (jobs.length) {
-        return bot.sendMessage(id, "<b>Here are the jobs for you</b>", {
-          parse_mode: "HTML",
-        });
-      } else {
-        setTimeout(() => {
-          bot.sendMessage(id, "<b>No jobs found</b>", {
-            parse_mode: "HTML",
-          });
-        }, 100);
-      }
     } else {
+      // console.log("contoll");
       if (company === "cred") {
-        credTracker(id);
+        // console.log("cred");
+        bot.sendMessage(id, "Searching in CRED").then(() => credTracker(id));
       }
-      if (company === "upstox") {
-        upstoxTracker(id);
-      }
-      if (company === "zerodha") {
-        zerodhaTracker(id);
-      }
-      setTimeout(() => {
-        bot.sendMessage(id, "<b>No jobs found</b>", {
-          parse_mode: "HTML",
-        });
-      }, 500);
+      if (company === "upstox")
+        bot
+          .sendMessage(id, "Searching in UPSTOX")
+          .then(() => upstoxTracker(id));
+      if (company === "zerodha")
+        bot
+          .sendMessage(id, "Searching in ZERODHA")
+          .then(() => zerodhaTracker(id));
     }
   } catch (error) {
     console.log(error);

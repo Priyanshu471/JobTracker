@@ -15,8 +15,13 @@ export const ourCompanies = [
 export let jobs = [];
 export const keywords = [
   "developer",
-  "engineer",
+  "sde",
   "frontend",
   "backend",
   "intern",
+  "Developer",
+  "SDE",
+  "Frontend",
+  "Backend",
+  "Intern",
 ];
